@@ -24,4 +24,14 @@ export class UserService {
       },
     });
   }
+  async create(dtoq: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+      include: {
+        favorites: true,
+      },
+    });
+  }
 }
