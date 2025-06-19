@@ -99,17 +99,10 @@ export class TicketsService {
       });
     }
   }
-  async getTicketById(id: string, userId: string, userRole: Role) {
+  async getTicketById(ticketId: string, userId: string, userRole: Role) {
     const ticket = await this.prisma.ticket.findUnique({
-      where: { id },
+      where: { id: ticketId },
       include: {
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
         createdBy: {
           select: {
             id: true,
@@ -117,10 +110,24 @@ export class TicketsService {
             role: true,
           },
         },
+        assignments: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1, // последняя активная назначение
+          select: {
+            assignedTo: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
         comments: {
           include: {
             user: {
-              // если у тебя поле называется author — используй author
               select: {
                 id: true,
                 email: true,
@@ -139,11 +146,12 @@ export class TicketsService {
       throw new NotFoundException('Тикет не найден');
     }
 
-    // Ограничение для операторов
+    // 🔒 Проверка доступа для оператора
     if (userRole === Role.OPERATOR) {
-      const hasAccess =
-        ticket.createdById === userId || ticket.assignedToId === userId;
-      if (!hasAccess) {
+      const isCreator = ticket.createdBy.id === userId;
+      const isAssigned = ticket.assignments?.[0]?.assignedTo?.id === userId;
+
+      if (!isCreator && !isAssigned) {
         throw new ForbiddenException('Недостаточно прав для просмотра тикета');
       }
     }
@@ -151,112 +159,112 @@ export class TicketsService {
     return ticket;
   }
 
-  async updateTicketStatus(
-    id: number,
-    updateStatusDto: UpdateTicketStatusDto,
-    userId: number,
-    userRole: UserRole,
-  ) {
-    const ticket = await this.getTicketById(id, userId, userRole);
+  //   async updateTicketStatus(
+  //     id: number,
+  //     updateStatusDto: UpdateTicketStatusDto,
+  //     userId: number,
+  //     userRole: UserRole,
+  //   ) {
+  //     const ticket = await this.getTicketById(id, userId, userRole);
 
-    // Оператор может менять статус только своих тикетов
-    if (userRole === UserRole.OPERATOR) {
-      const hasAccess =
-        ticket.assignedToId === userId || ticket.createdById === userId;
-      if (!hasAccess) {
-        throw new ForbiddenException('Недостаточно прав для изменения тикета');
-      }
-    }
+  //     // Оператор может менять статус только своих тикетов
+  //     if (userRole === UserRole.OPERATOR) {
+  //       const hasAccess =
+  //         ticket.assignedToId === userId || ticket.createdById === userId;
+  //       if (!hasAccess) {
+  //         throw new ForbiddenException('Недостаточно прав для изменения тикета');
+  //       }
+  //     }
 
-    return this.prisma.ticket.update({
-      where: { id },
-      data: updateStatusDto,
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-    });
-  }
+  //     return this.prisma.ticket.update({
+  //       where: { id },
+  //       data: updateStatusDto,
+  //       include: {
+  //         assignedTo: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             name: true,
+  //             role: true,
+  //           },
+  //         },
+  //         createdBy: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             name: true,
+  //             role: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //   }
 
-  async assignTicket(id: number, assignTicketDto: AssignTicketDto) {
-    const assignee = await this.prisma.user.findUnique({
-      where: { id: assignTicketDto.assignedToId },
-    });
+  //   async assignTicket(id: number, assignTicketDto: AssignTicketDto) {
+  //     const assignee = await this.prisma.user.findUnique({
+  //       where: { id: assignTicketDto.assignedToId },
+  //     });
 
-    if (!assignee) {
-      throw new NotFoundException('Пользователь не найден');
-    }
+  //     if (!assignee) {
+  //       throw new NotFoundException('Пользователь не найден');
+  //     }
 
-    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
-    if (!ticket) {
-      throw new NotFoundException('Тикет не найден');
-    }
+  //     const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+  //     if (!ticket) {
+  //       throw new NotFoundException('Тикет не найден');
+  //     }
 
-    return this.prisma.ticket.update({
-      where: { id },
-      data: { assignedToId: assignTicketDto.assignedToId },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-    });
-  }
+  //     return this.prisma.ticket.update({
+  //       where: { id },
+  //       data: { assignedToId: assignTicketDto.assignedToId },
+  //       include: {
+  //         assignedTo: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             name: true,
+  //             role: true,
+  //           },
+  //         },
+  //         createdBy: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             name: true,
+  //             role: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //   }
 
-  async addComment(
-    ticketId: number,
-    addCommentDto: AddCommentDto,
-    userId: number,
-    userRole: UserRole,
-  ) {
-    // Проверяем доступ к тикету
-    await this.getTicketById(ticketId, userId, userRole);
+  //   async addComment(
+  //     ticketId: number,
+  //     addCommentDto: AddCommentDto,
+  //     userId: number,
+  //     userRole: UserRole,
+  //   ) {
+  //     // Проверяем доступ к тикету
+  //     await this.getTicketById(ticketId, userId, userRole);
 
-    return this.prisma.comment.create({
-      data: {
-        content: addCommentDto.content,
-        ticketId,
-        authorId: userId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-    });
-  }
+  //     return this.prisma.comment.create({
+  //       data: {
+  //         content: addCommentDto.content,
+  //         ticketId,
+  //         authorId: userId,
+  //       },
+  //       include: {
+  //         author: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             name: true,
+  //             role: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //   }
 
   // async getOperators() {
   //   return this.prisma.user.findMany({

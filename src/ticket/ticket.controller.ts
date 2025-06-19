@@ -43,21 +43,19 @@ export class TicketsController {
     return this.ticketsService.getTickets(user.id, user.role);
   }
 
-  // @Get('operators')
-  // @Roles(UserRole.SUPERVISOR)
-  // getOperators() {
-  //   return this.ticketsService.getOperators();
-  // }
+  @Get('tickets/:id')
+  getTicket(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.ticketsService.getTicketById(id, user.id, user.role);
+  }
 
-  // @Get(':id')
-  // @Roles(UserRole.OPERATOR, UserRole.SUPERVISOR)
-  // getTicket(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @CurrentUser() user: UserPayload,
-  // ) {
-  //   return this.ticketsService.getTicketById(id, user.id, user.role);
-  // }
-
+  @UseGuards(JwtAuthGuard, OnlySuperviserGuard) // защита — только авторизованный супервайзер
+  @Patch(':id/assign')
+  async assignTicket(
+    @Param('id') ticketId: string,
+    @Body() assignTicketDto: AssignTicketDto,
+  ) {
+    return this.ticketsService.assign(ticketId, assignTicketDto.operatorId);
+  }
   // @Patch(':id/status')
   // @Roles(UserRole.OPERATOR, UserRole.SUPERVISOR)
   // updateTicketStatus(

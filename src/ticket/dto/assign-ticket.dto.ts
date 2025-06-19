@@ -1,7 +1,8 @@
-import { IsInt, IsPositive } from 'class-validator';
+// assign-ticket.dto.ts
+import { IsString, IsNotEmpty } from 'class-validator';
 
 export class AssignTicketDto {
-  @IsInt()
-  @IsPositive()
-  assignedToId: number;
+  @IsString()
+  @IsNotEmpty()
+  operatorId: string; // ID оператора, на кого назначаем тикет
 }
