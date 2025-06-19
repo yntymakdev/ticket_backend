@@ -11,8 +11,8 @@ datasource db {
 model User {
   id         String       @id @default(cuid())
   email      String       @unique
-  password   String?
-  role       Role         @default(operator)
+  password   String
+  role       Role         @default(OPERATOR)
   tickets    Ticket[]     @relation("CreatedTickets")
   comments   Comment[]
   assigned   Assignment[] @relation("AssignedTo")
@@ -25,7 +25,7 @@ model Ticket {
   title        String
   description  String
   customerName String
-  status       TicketStatus @default(open)
+  status       TicketStatus @default(OPEN)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -69,12 +69,142 @@ model Assignment {
 }
 
 enum Role {
-  operator
-  supervisor
+  OPERATOR
+  SUPERVISOR
 }
 
 enum TicketStatus {
-  open
-  in_progress
-  closed
+  OPEN
+  IN_PROGRESS
+  CLOSED
 }
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// // Роли пользователей
+// enum Role {
+//   OPERATOR    // Создает тикеты, видит только свои
+//   SUPERVISOR  // Видит все тикеты, переназначает, НЕ создает
+// }
+
+// enum TicketStatus {
+//   OPEN
+//   IN_PROGRESS
+//   CLOSED
+// }
+
+// enum ActionType {
+//   CREATED       
+//   COMMENTED     // Добавлен комментарий
+//   STATUS_CHANGED // Изменен статус
+//   REASSIGNED    // Переназначен (только супервайзеры)
+//   CLOSED        // Закрыт
+// }
+
+// model User {
+//   id        String      @id @default(cuid())
+//   email     String   @unique
+//   password  String   
+//   name      String
+//   role      Role     @default(OPERATOR)
+//   isActive  Boolean  @default(true)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   assignedTickets Ticket[]      @relation("AssignedTo")  
+//   createdTickets  Ticket[]      @relation("CreatedBy")  
+//   comments        Comment[]     
+//   historyActions  TicketHistory[] 
+
+//   @@map("users")
+// }
+
+// model Ticket {
+//   id               String          @id @default(cuid())
+//   title            String       
+//   description      String      
+//   status           TicketStatus @default(OPEN)
+  
+//   customerName     String       
+  
+//   assignedToId     Int          
+//   assignedTo       User         @relation("AssignedTo", fields: [assignedToId], references: [id])
+  
+//   createdById      Int          
+//   createdBy        User         @relation("CreatedBy", fields: [createdById], references: [id])
+  
+//   createdAt        DateTime     @default(now())
+//   updatedAt        DateTime     @updatedAt
+//   closedAt         DateTime?    
+  
+//   comments         Comment[]  
+//   history          TicketHistory[] 
+
+//   @@map("tickets")
+// }
+
+// // Модель комментариев к тикетам
+// model Comment {
+//   id               String          @id @default(cuid())
+
+//   content   String   // Текст комментария
+  
+//   // Связи
+//   ticketId  Int      // ID тикета
+//   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+//   authorId  Int      // ID автора комментария
+//   author    User     @relation(fields: [authorId], references: [id])
+  
+//   // Временные метки
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@map("comments")
+// }
+
+// // Модель истории изменений тикета
+// model TicketHistory {
+//   id        Int      @id @default(autoincrement())
+
+//   action      ActionType // Тип действия
+//   description String     // Описание действия
+  
+//   // Дополнительные поля для переназначения
+//   oldValue    String?    // Старое значение (например, старый исполнитель)
+//   newValue    String?    // Новое значение (например, новый исполнитель)
+  
+//   // Связи
+//   ticketId    Int        // ID тикета
+//   ticket      Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+//   performedById Int      // ID пользователя, выполнившего действие
+//   performedBy   User     @relation(fields: [performedById], references: [id])
+  
+//   // Временная метка
+//   createdAt   DateTime   @default(now())
+
+//   @@map("ticket_history")
+// }
+
+// // Опциональная модель для хранения настроек системы
+// model Settings {
+//   id    Int    @id @default(autoincrement())
+//   key   String @unique
+//   value String
+  
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@map("settings")
+// }

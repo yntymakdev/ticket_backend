@@ -56,7 +56,7 @@ export class UserService {
     const user = {
       email: dto.email,
       password: await hash(dto.password),
-      role: dto.role || Role.operator,
+      role: dto.role || Role.OPERATOR,
     };
 
     return this.prisma.user.create({
@@ -71,7 +71,7 @@ export class UserService {
 
   async getOperators() {
     return this.prisma.user.findMany({
-      where: { role: Role.operator },
+      where: { role: Role.OPERATOR },
       select: {
         id: true,
         email: true,
@@ -79,4 +79,14 @@ export class UserService {
       },
     });
   }
+
+  // async getAll(searchTerm?: string) {
+  //   if (searchTerm) this.search(searchTerm);
+  //   return this.prisma.user.findMany({
+  //     select:,
+  //     orderBy: {
+  //       createdAt: 'desc',
+  //     },
+  //   });
+  // }
 }
