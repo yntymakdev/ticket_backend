@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   UseGuards,
   ValidationPipe,
+  Delete,
 } from '@nestjs/common';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { Role } from '@prisma/client';
@@ -85,6 +86,15 @@ export class TicketsController {
       user.id,
       user.role,
     );
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, OnlySuperviserGuard)
+  async deleteTicket(
+    @Param('id') ticketId: string,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.ticketsService.delete(ticketId, user.id, user.role);
   }
 
   // @Patch(':id/status')

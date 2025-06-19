@@ -17,6 +17,7 @@ model User {
   comments   Comment[]
   assigned   Assignment[] @relation("AssignedTo")
   assignedBy Assignment[] @relation("AssignedBy")
+
   @@map("user")
 }
 

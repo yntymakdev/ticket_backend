@@ -354,4 +354,21 @@ export class TicketsService {
       },
     });
   }
+  async delete(ticketId: string, userId: string, userRole: Role) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+    });
+    if (!ticket) {
+      throw new NotFoundException('Тикет не найден');
+    }
+
+    // Проверка прав (например, только супервайзер может удалять)
+    if (userRole !== Role.SUPERVISOR) {
+      throw new ForbiddenException('Нет доступа на удаление тикета');
+    }
+
+    await this.prisma.ticket.delete({ where: { id: ticketId } });
+
+    return { message: 'Тикет успешно удалён' };
+  }
 }
