@@ -1,5 +1,5 @@
 // src/user/user.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { hash } from 'argon2';
 import { AuthDto } from 'src/auth/dto/auth.dto';
 import { PrismaService } from 'src/prisma.service';
@@ -78,6 +78,32 @@ export class UserService {
         role: true,
       },
     });
+  }
+  async findAllByRole(role: Role) {
+    return this.prisma.user.findMany({
+      where: { role },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+  }
+
+  async getOperatorById(id: string) {
+    const operator = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!operator) {
+      throw new NotFoundException(`Оператор с id ${id} не найден`);
+    }
+
+    return operator;
   }
 
   // async getAll(searchTerm?: string) {

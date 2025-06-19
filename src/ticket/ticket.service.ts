@@ -3,11 +3,13 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { PrismaService } from 'src/prisma.service';
 import { Role, TicketStatus } from '@prisma/client';
 import { CreateTicketDto } from './decorators/ticket-decorator';
+import { AddCommentDto } from './dto/add-comment.dto';
 
 @Injectable()
 export class TicketsService {
@@ -238,33 +240,30 @@ export class TicketsService {
   //     });
   //   }
 
-  //   async addComment(
-  //     ticketId: number,
-  //     addCommentDto: AddCommentDto,
-  //     userId: number,
-  //     userRole: UserRole,
-  //   ) {
-  //     // Проверяем доступ к тикету
-  //     await this.getTicketById(ticketId, userId, userRole);
+  async addComment(
+    ticketId: string,
+    addCommentDto: AddCommentDto,
+    userId: string,
+  ) {
+    // (можно добавить проверку, существует ли тикет, если хочешь)
 
-  //     return this.prisma.comment.create({
-  //       data: {
-  //         content: addCommentDto.content,
-  //         ticketId,
-  //         authorId: userId,
-  //       },
-  //       include: {
-  //         author: {
-  //           select: {
-  //             id: true,
-  //             email: true,
-  //             name: true,
-  //             role: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   }
+    return this.prisma.comment.create({
+      data: {
+        message: addCommentDto.message, // поле должно совпадать с моделью
+        ticketId,
+        userId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
 
   // async getOperators() {
   //   return this.prisma.user.findMany({
@@ -278,4 +277,25 @@ export class TicketsService {
   //     },
   //   });
   // }
+  async assign(ticketId: string, newOperatorId: string, supervisorId: string) {
+    // Проверяем, что оператор существует и роль Оператор
+    const operator = await this.prisma.user.findUnique({
+      where: { id: newOperatorId },
+    });
+    if (!operator || operator.role !== Role.OPERATOR) {
+      throw new NotFoundException('Оператор не найден или некорректная роль');
+    }
+    return this.prisma.assignment.create({
+      data: {
+        ticketId,
+        assignedToId: newOperatorId,
+        assignedById: supervisorId,
+      },
+      include: {
+        assignedTo: true,
+        assignedBy: true,
+        ticket: true,
+      },
+    });
+  }
 }

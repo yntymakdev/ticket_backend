@@ -17,6 +17,7 @@ import { TicketsService } from './ticket.service';
 import { CurrentUser } from 'src/user/decorators/user.decorator';
 import { OnlySuperviserGuard } from 'src/auth/guard/admin.guard';
 import { CreateTicketDto } from './decorators/ticket-decorator';
+import { AddCommentDto } from './dto/add-comment.dto';
 
 interface UserPayload {
   id: string;
@@ -48,14 +49,29 @@ export class TicketsController {
     return this.ticketsService.getTicketById(id, user.id, user.role);
   }
 
-  @UseGuards(JwtAuthGuard, OnlySuperviserGuard) // защита — только авторизованный супервайзер
   @Patch(':id/assign')
+  @UseGuards(JwtAuthGuard, OnlySuperviserGuard)
   async assignTicket(
     @Param('id') ticketId: string,
     @Body() assignTicketDto: AssignTicketDto,
+    @CurrentUser() user: UserPayload, // у тебя должно быть в декораторах
   ) {
-    return this.ticketsService.assign(ticketId, assignTicketDto.operatorId);
+    return this.ticketsService.assign(
+      ticketId,
+      assignTicketDto.operatorId,
+      user.id,
+    );
   }
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/comments')
+  addComment(
+    @Param('id') ticketId: string,
+    @Body() dto: AddCommentDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.ticketsService.addComment(ticketId, dto, user.id);
+  }
+
   // @Patch(':id/status')
   // @Roles(UserRole.OPERATOR, UserRole.SUPERVISOR)
   // updateTicketStatus(
