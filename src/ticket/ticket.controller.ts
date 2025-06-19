@@ -18,6 +18,7 @@ import { CurrentUser } from 'src/user/decorators/user.decorator';
 import { OnlySuperviserGuard } from 'src/auth/guard/admin.guard';
 import { CreateTicketDto } from './decorators/ticket-decorator';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 
 interface UserPayload {
   id: string;
@@ -70,6 +71,20 @@ export class TicketsController {
     @CurrentUser() user: UserPayload,
   ) {
     return this.ticketsService.addComment(ticketId, dto, user.id);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') ticketId: string,
+    @Body() dto: UpdateTicketStatusDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.ticketsService.updateStatus(
+      ticketId,
+      dto.status,
+      user.id,
+      user.role,
+    );
   }
 
   // @Patch(':id/status')

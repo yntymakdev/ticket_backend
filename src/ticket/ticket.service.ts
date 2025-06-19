@@ -264,6 +264,28 @@ export class TicketsService {
       },
     });
   }
+  //?   async updateStatus(
+  //     ticketId: string,
+  //     status: TicketStatus,
+  //     userId: string,
+  //     userRole: Role,
+  //   ) {
+  //     // Проверка прав: оператор может менять только свои тикеты
+  //     if (userRole === Role.OPERATOR) {
+  //       const ticket = await this.prisma.ticket.findUnique({
+  //         where: { id: ticketId },
+  //       });
+
+  //       if (!ticket || ticket.createdById !== userId) {
+  //         throw new ForbiddenException('Нет доступа к изменению этого тикета');
+  //       }
+  //     }
+
+  //     return this.prisma.ticket.update({
+  //       where: { id: ticketId },
+  //       data: { status },
+  //     });
+  //   }
 
   // async getOperators() {
   //   return this.prisma.user.findMany({
@@ -277,6 +299,40 @@ export class TicketsService {
   //     },
   //   });
   // }
+  async updateStatus(
+    ticketId: string,
+    newStatus: string, // строка из DTO
+    userId: string,
+    userRole: Role,
+  ) {
+    // Проверка валидности статуса
+    if (!Object.values(TicketStatus).includes(newStatus as TicketStatus)) {
+      throw new BadRequestException(`Недопустимый статус: ${newStatus}`);
+    }
+
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+    });
+    if (!ticket) {
+      throw new NotFoundException('Тикет не найден');
+    }
+
+    if (userRole === Role.OPERATOR && ticket.createdById !== userId) {
+      throw new ForbiddenException('Нет доступа к изменению этого тикета');
+    }
+
+    const oldStatus = ticket.status;
+
+    const updatedTicket = await this.prisma.ticket.update({
+      where: { id: ticketId },
+      data: { status: newStatus as TicketStatus },
+    });
+
+    // Если есть логирование — добавляй сюда, иначе пропускай
+
+    return updatedTicket;
+  }
+
   async assign(ticketId: string, newOperatorId: string, supervisorId: string) {
     // Проверяем, что оператор существует и роль Оператор
     const operator = await this.prisma.user.findUnique({
