@@ -22,7 +22,7 @@ export class AuthService {
     const oldUser = await this.userService.getByEmail(dto.email);
     if (oldUser) throw new BadRequestException('Пользователь уже существует');
     const user = await this.userService.create(dto);
-    const tokens = this.issueTokens(user.id);
+    const tokens = this.issueTokens(user);
     return {
       user,
       ...tokens,
@@ -30,7 +30,7 @@ export class AuthService {
   }
   async login(dto: AuthDto) {
     const user = await this.validateUser(dto);
-    const tokens = this.issueTokens(user.id);
+    const tokens = this.issueTokens(user);
     return {
       user,
       ...tokens,
@@ -49,7 +49,7 @@ export class AuthService {
       throw new UnauthorizedException('Пользователь не найден');
     }
 
-    const tokens = this.issueTokens(user.id);
+    const tokens = this.issueTokens(user);
 
     return {
       user,
@@ -57,16 +57,32 @@ export class AuthService {
     };
   }
 
-  private issueTokens(userId: string) {
-    const data = { id: userId };
-    const accessToken = this.jwt.sign(data, {
+  // private issueTokens(userId: string) {
+  //   const data = { id: userId };
+  //   const accessToken = this.jwt.sign(data, {
+  //     expiresIn: '1h',
+  //   });
+  //   const refreshToken = this.jwt.sign(data, {
+  //     expiresIn: '7d',
+  //   });
+  //   return { accessToken, refreshToken };
+  // }
+  private issueTokens(user: { id: string; role: string }) {
+    const payload = {
+      sub: user.id, // стандартное поле для id
+      role: user.role, // добавляем роль в payload
+    };
+
+    const accessToken = this.jwt.sign(payload, {
       expiresIn: '1h',
     });
-    const refreshToken = this.jwt.sign(data, {
+    const refreshToken = this.jwt.sign(payload, {
       expiresIn: '7d',
     });
+
     return { accessToken, refreshToken };
   }
+
   private async validateUser(dto: AuthDto) {
     const user = await this.userService.getByEmail(dto.email);
 
