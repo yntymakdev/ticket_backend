@@ -32,6 +32,7 @@ interface UserPayload {
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
   @Post('create')
+  @UseGuards(JwtAuthGuard)
   createTicket(
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     createTicketDto: CreateTicketDto,
@@ -56,8 +57,9 @@ export class TicketsController {
   async assignTicket(
     @Param('id') ticketId: string,
     @Body() assignTicketDto: AssignTicketDto,
-    @CurrentUser() user: UserPayload, // у тебя должно быть в декораторах
+    @CurrentUser() user: UserPayload,
   ) {
+    console.log(user);
     return this.ticketsService.assign(
       ticketId,
       assignTicketDto.operatorId,

@@ -116,7 +116,7 @@ export class TicketsService {
           orderBy: {
             createdAt: 'desc',
           },
-          take: 1, // последняя активная назначение
+          take: 1,
           select: {
             assignedTo: {
               select: {
@@ -362,11 +362,21 @@ export class TicketsService {
       throw new NotFoundException('Тикет не найден');
     }
 
-    // Проверка прав (например, только супервайзер может удалять)
     if (userRole !== Role.SUPERVISOR) {
       throw new ForbiddenException('Нет доступа на удаление тикета');
     }
 
+    // Удаляем все связанные назначения
+    await this.prisma.assignment.deleteMany({
+      where: { ticketId },
+    });
+
+    // Удаляем все связанные комментарии
+    await this.prisma.comment.deleteMany({
+      where: { ticketId },
+    });
+
+    // Теперь можно удалить тикет
     await this.prisma.ticket.delete({ where: { id: ticketId } });
 
     return { message: 'Тикет успешно удалён' };
