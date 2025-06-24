@@ -14,6 +14,7 @@ import { AddCommentDto } from './dto/add-comment.dto';
 @Injectable()
 export class TicketsService {
   constructor(private prisma: PrismaService) {}
+
   async createTicket(createTicketDto: CreateTicketDto, creatorId: string) {
     return this.prisma.ticket.create({
       data: {
@@ -61,46 +62,139 @@ export class TicketsService {
       },
     });
   }
-  async getTickets(userId: string, userRole: Role) {
-    if (userRole === Role.SUPERVISOR) {
-      // Супервайзер видит все тикеты без ограничений
-      return this.prisma.ticket.findMany({
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          customerName: true,
-          createdAt: true,
-        },
-      });
-    } else {
-      // Оператор видит только свои тикеты (созданные им или назначенные)
-      return this.prisma.ticket.findMany({
-        where: {
-          OR: [
-            { createdById: userId },
-            {
-              assignments: {
-                some: {
-                  assignedToId: userId,
-                },
+  async getTickets(userId: string, userRole: Role, searchQuery?: string) {
+    const filters: any[] = [];
+
+    if (userRole !== Role.SUPERVISOR) {
+      filters.push({
+        OR: [
+          { createdById: userId },
+          {
+            assignments: {
+              some: {
+                assignedToId: userId,
               },
             },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          customerName: true,
-          createdAt: true,
-          // Можно убрать или оставить комментарии, если надо
+          },
+        ],
+      });
+    }
+
+    if (searchQuery) {
+      filters.push({
+        customerName: {
+          contains: searchQuery,
+          mode: 'insensitive' as const,
         },
       });
     }
+
+    return this.prisma.ticket.findMany({
+      where: filters.length ? { AND: filters } : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        customerName: true,
+        createdAt: true,
+      },
+    });
   }
+
+  //? Альтернативный метод для более гибкого поиска
+  async searchTickets(
+    userId: string,
+    userRole: Role,
+    filters: {
+      customerName?: string;
+      status?: TicketStatus;
+      title?: string;
+    } = {},
+  ) {
+    // Базовые условия фильтрации по роли
+    const roleConditions =
+      userRole === Role.SUPERVISOR
+        ? {}
+        : {
+            OR: [
+              { createdById: userId },
+              {
+                assignments: {
+                  some: {
+                    assignedToId: userId,
+                  },
+                },
+              },
+            ],
+          };
+
+    // Условия поиска
+    const searchConditions: Record<string, any>[] = [];
+
+    if (filters.customerName) {
+      searchConditions.push({
+        customerName: {
+          contains: filters.customerName,
+          mode: 'insensitive' as const,
+        },
+      });
+    }
+
+    if (filters.title) {
+      searchConditions.push({
+        title: {
+          contains: filters.title,
+          mode: 'insensitive' as const,
+        },
+      });
+    }
+
+    if (filters.status) {
+      searchConditions.push({
+        status: filters.status,
+      });
+    }
+
+    // Объединяем все условия
+    const whereCondition = {
+      AND: [
+        roleConditions,
+        ...(searchConditions.length > 0 ? searchConditions : [{}]),
+      ].filter((condition) => Object.keys(condition).length > 0),
+    };
+
+    return this.prisma.ticket.findMany({
+      where: whereCondition,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        customerName: true,
+        createdAt: true,
+        createdBy: {
+          select: {
+            email: true,
+          },
+        },
+        assignments: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+          select: {
+            assignedTo: {
+              select: {
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async getTicketById(ticketId: string, userId: string, userRole: Role) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -161,95 +255,14 @@ export class TicketsService {
     return ticket;
   }
 
-  //   async updateTicketStatus(
-  //     id: number,
-  //     updateStatusDto: UpdateTicketStatusDto,
-  //     userId: number,
-  //     userRole: UserRole,
-  //   ) {
-  //     const ticket = await this.getTicketById(id, userId, userRole);
-
-  //     // Оператор может менять статус только своих тикетов
-  //     if (userRole === UserRole.OPERATOR) {
-  //       const hasAccess =
-  //         ticket.assignedToId === userId || ticket.createdById === userId;
-  //       if (!hasAccess) {
-  //         throw new ForbiddenException('Недостаточно прав для изменения тикета');
-  //       }
-  //     }
-
-  //     return this.prisma.ticket.update({
-  //       where: { id },
-  //       data: updateStatusDto,
-  //       include: {
-  //         assignedTo: {
-  //           select: {
-  //             id: true,
-  //             email: true,
-  //             name: true,
-  //             role: true,
-  //           },
-  //         },
-  //         createdBy: {
-  //           select: {
-  //             id: true,
-  //             email: true,
-  //             name: true,
-  //             role: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   }
-
-  //   async assignTicket(id: number, assignTicketDto: AssignTicketDto) {
-  //     const assignee = await this.prisma.user.findUnique({
-  //       where: { id: assignTicketDto.assignedToId },
-  //     });
-
-  //     if (!assignee) {
-  //       throw new NotFoundException('Пользователь не найден');
-  //     }
-
-  //     const ticket = await this.prisma.ticket.findUnique({ where: { id } });
-  //     if (!ticket) {
-  //       throw new NotFoundException('Тикет не найден');
-  //     }
-
-  //     return this.prisma.ticket.update({
-  //       where: { id },
-  //       data: { assignedToId: assignTicketDto.assignedToId },
-  //       include: {
-  //         assignedTo: {
-  //           select: {
-  //             id: true,
-  //             email: true,
-  //             name: true,
-  //             role: true,
-  //           },
-  //         },
-  //         createdBy: {
-  //           select: {
-  //             id: true,
-  //             email: true,
-  //             name: true,
-  //             role: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   }
-
   async addComment(
     ticketId: string,
     addCommentDto: AddCommentDto,
     userId: string,
   ) {
-    // (можно добавить проверку, существует ли тикет, если хочешь)
-
     return this.prisma.comment.create({
       data: {
-        message: addCommentDto.message, // поле должно совпадать с моделью
+        message: addCommentDto.message,
         ticketId,
         userId,
       },
@@ -264,48 +277,31 @@ export class TicketsService {
       },
     });
   }
-  //?   async updateStatus(
-  //     ticketId: string,
-  //     status: TicketStatus,
-  //     userId: string,
-  //     userRole: Role,
-  //   ) {
-  //     // Проверка прав: оператор может менять только свои тикеты
-  //     if (userRole === Role.OPERATOR) {
-  //       const ticket = await this.prisma.ticket.findUnique({
-  //         where: { id: ticketId },
-  //       });
 
-  //       if (!ticket || ticket.createdById !== userId) {
-  //         throw new ForbiddenException('Нет доступа к изменению этого тикета');
-  //       }
-  //     }
+  async getComments(ticketId: string) {
+    return this.prisma.comment.findMany({
+      where: { ticketId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+  }
 
-  //     return this.prisma.ticket.update({
-  //       where: { id: ticketId },
-  //       data: { status },
-  //     });
-  //   }
-
-  // async getOperators() {
-  //   return this.prisma.user.findMany({
-  //     where: {
-  //       role: Role.OPERATOR,
-  //     },
-  //     select: {
-  //       id: true,
-  //       email: true,
-  //       role: true,
-  //     },
-  //   });
-  // }
   async updateStatus(
     ticketId: string,
-    newStatus: string, // строка из DTO
+    newStatus: string,
     userId: string,
     userRole: Role,
   ) {
-    // Проверка валидности статуса
     if (!Object.values(TicketStatus).includes(newStatus as TicketStatus)) {
       throw new BadRequestException(`Недопустимый статус: ${newStatus}`);
     }
@@ -328,13 +324,10 @@ export class TicketsService {
       data: { status: newStatus as TicketStatus },
     });
 
-    // Если есть логирование — добавляй сюда, иначе пропускай
-
     return updatedTicket;
   }
 
   async assign(ticketId: string, newOperatorId: string, supervisorId: string) {
-    // Проверяем, что оператор существует и роль Оператор
     const operator = await this.prisma.user.findUnique({
       where: { id: newOperatorId },
     });
@@ -354,6 +347,7 @@ export class TicketsService {
       },
     });
   }
+
   async delete(ticketId: string, userId: string, userRole: Role) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -366,17 +360,14 @@ export class TicketsService {
       throw new ForbiddenException('Нет доступа на удаление тикета');
     }
 
-    // Удаляем все связанные назначения
     await this.prisma.assignment.deleteMany({
       where: { ticketId },
     });
 
-    // Удаляем все связанные комментарии
     await this.prisma.comment.deleteMany({
       where: { ticketId },
     });
 
-    // Теперь можно удалить тикет
     await this.prisma.ticket.delete({ where: { id: ticketId } });
 
     return { message: 'Тикет успешно удалён' };

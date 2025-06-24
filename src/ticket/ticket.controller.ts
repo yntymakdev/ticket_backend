@@ -10,9 +10,10 @@ import {
   UseGuards,
   ValidationPipe,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
-import { Role } from '@prisma/client';
+import { Role, TicketStatus, User } from '@prisma/client';
 import { JwtAuthGuard } from 'src/auth/guard/jwt.guard';
 import { TicketsService } from './ticket.service';
 import { CurrentUser } from 'src/user/decorators/user.decorator';
@@ -43,10 +44,31 @@ export class TicketsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('tickets')
-  getTickets(@CurrentUser() user: UserPayload) {
-    return this.ticketsService.getTickets(user.id, user.role);
+  // В контроллере
+  async getTickets(
+    @CurrentUser() user: User,
+    @Query('searchQuery') searchQuery?: string,
+  ) {
+    return this.ticketsService.getTickets(
+      user.id,
+      user.role as Role,
+      searchQuery,
+    );
   }
 
+  // Или для более гибкого поиска
+  async searchTickets(
+    @CurrentUser() user: User,
+    @Query('customerName') customerName?: string,
+    @Query('status') status?: TicketStatus,
+    @Query('title') title?: string,
+  ) {
+    return this.ticketsService.searchTickets(user.id, user.role, {
+      customerName,
+      status,
+      title,
+    });
+  }
   @Get('tickets/:id')
   getTicket(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.ticketsService.getTicketById(id, user.id, user.role);
@@ -75,6 +97,12 @@ export class TicketsController {
   ) {
     return this.ticketsService.addComment(ticketId, dto, user.id);
   }
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/comments')
+  getComments(@Param('id') ticketId: string) {
+    return this.ticketsService.getComments(ticketId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
   async updateStatus(
