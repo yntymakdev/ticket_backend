@@ -372,4 +372,26 @@ export class TicketsService {
 
     return { message: 'Тикет успешно удалён' };
   }
+  async deleteComment(commentId: string, userId: string, userRole: Role) {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Комментарий не найден');
+    }
+
+    if (userRole === Role.OPERATOR && comment.userId !== userId) {
+      throw new ForbiddenException('Нет доступа к удалению этого комментария');
+    }
+
+    await this.prisma.comment.delete({
+      where: { id: commentId },
+    });
+
+    return { message: 'Комментарий удалён' };
+  }
 }
