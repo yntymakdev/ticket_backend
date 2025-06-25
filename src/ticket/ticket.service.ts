@@ -112,7 +112,6 @@ export class TicketsService {
       title?: string;
     } = {},
   ) {
-    // Базовые условия фильтрации по роли
     const roleConditions =
       userRole === Role.SUPERVISOR
         ? {}
@@ -129,7 +128,6 @@ export class TicketsService {
             ],
           };
 
-    // Условия поиска
     const searchConditions: Record<string, any>[] = [];
 
     if (filters.customerName) {
@@ -156,7 +154,6 @@ export class TicketsService {
       });
     }
 
-    // Объединяем все условия
     const whereCondition = {
       AND: [
         roleConditions,

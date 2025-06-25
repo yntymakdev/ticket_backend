@@ -44,7 +44,6 @@ export class TicketsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('tickets')
-  // В контроллере
   async getTickets(
     @CurrentUser() user: User,
     @Query('searchQuery') searchQuery?: string,
@@ -56,7 +55,6 @@ export class TicketsController {
     );
   }
 
-  // Или для более гибкого поиска
   async searchTickets(
     @CurrentUser() user: User,
     @Query('customerName') customerName?: string,
